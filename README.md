@@ -3,6 +3,7 @@
 ### Research and Implementation Reference Document
 
 **Scope:** knowledge reference and step by step implementation guide.
+
 **Target platform:** single all-in-one Wazuh server (Manager, Indexer and Dashboard on one host), Ubuntu LTS.
 
 ---
@@ -13,16 +14,16 @@
 ## Table of Contents
 
 - [1. Introduction](#1-introduction)
-- [3. Have I Been Squatted (Typosquatting Detection)](#3-have-i-been-squatted-typosquatting-detection)
-- [4. Filescan.io Threat Intelligence Ingestion](#4-filescanio-threat-intelligence-ingestion)
-- [5. Shodan.io Attack Surface and IoT Monitoring](#5-shodanio-attack-surface-and-iot-monitoring)
-- [6. urlscan.io Automated URL Reputation Enrichment](#6-urlscanio-automated-url-reputation-enrichment)
-- [7. InsecureWeb Threat Intelligence Ingestion](#7-insecureweb-threat-intelligence-ingestion)
-- [8. Symantec EDR Integration](#8-symantec-edr-integration)
-- [9. CrowdStrike Falcon EDR Integration](#9-crowdstrike-falcon-edr-integration)
-- [10. Sophos Firewall Integration](#10-sophos-firewall-integration)
-- [11. Cross-Integration Comparison](#11-cross-integration-comparison)
-- [12. Appendix: Consolidated Rule ID Map](#12-appendix-consolidated-rule-id-map)
+- [2. Have I Been Squatted (Typosquatting Detection)](#2-have-i-been-squatted-typosquatting-detection)
+- [3. Filescan.io Threat Intelligence Ingestion](#3-filescanio-threat-intelligence-ingestion)
+- [4. Shodan.io Attack Surface and IoT Monitoring](#4-shodanio-attack-surface-and-iot-monitoring)
+- [5. urlscan.io Automated URL Reputation Enrichment](#5-urlscanio-automated-url-reputation-enrichment)
+- [6. InsecureWeb Threat Intelligence Ingestion](#6-insecureweb-threat-intelligence-ingestion)
+- [7. Symantec EDR Integration](#7-symantec-edr-integration)
+- [8. CrowdStrike Falcon EDR Integration](#8-crowdstrike-falcon-edr-integration)
+- [9. Sophos Firewall Integration](#9-sophos-firewall-integration)
+- [10. Cross-Integration Comparison](#10-cross-integration-comparison)
+- [11. Appendix: Consolidated Rule ID Map](#11-appendix-consolidated-rule-id-map)
 
 ---
 
@@ -38,7 +39,7 @@ This document is written for implementation, not casual reading. Every section c
 
 ## 1.2 How to use this document
 
-The document is organized into one major section per integration (Sections 3 through 10). Each of those sections is self contained and follows the same internal structure, so once you are familiar with one section you can navigate any other section the same way:
+The document is organized into one major section per integration (Sections 2 through 9). Each of those sections is self contained and follows the same internal structure, so once you are familiar with one section you can navigate any other section the same way:
 
 - Purpose: what problem the integration solves and why it might matter to us.
 - Architecture diagram: a visual, step by step data flow from the external source through to a Wazuh alert.
@@ -68,14 +69,14 @@ Our current custom ruleset is minimal, so there is no existing collision today, 
 
 | Integration | First rule ID in block | Last rule ID in block |
 | --- | --- | --- |
-| Have I Been Squatted (Section 3) | 100100 | 100199 |
-| Filescan.io (Section 4) | 100200 | 100299 |
-| Shodan.io (Section 5) | 100300 | 100399 |
-| urlscan.io (Section 6) | 100400 | 100499 |
-| InsecureWeb (Section 7) | 100500 | 100599 |
-| Symantec EDR (Section 8) | 100600 | 100699 |
-| CrowdStrike Falcon (Section 9) | 100700 | 100799 |
-| Sophos Firewall (Section 10) | 100800 | 100899 |
+| Have I Been Squatted (Section 2) | 100100 | 100199 |
+| Filescan.io (Section 3) | 100200 | 100299 |
+| Shodan.io (Section 4) | 100300 | 100399 |
+| urlscan.io (Section 5) | 100400 | 100499 |
+| InsecureWeb (Section 6) | 100500 | 100599 |
+| Symantec EDR (Section 7) | 100600 | 100699 |
+| CrowdStrike Falcon (Section 8) | 100700 | 100799 |
+| Sophos Firewall (Section 9) | 100800 | 100899 |
 
 > **Recommendation:** If any of these integrations are deployed, keep a note of the next free ID above 100899 for any future custom rule work, so this same collision problem does not reappear later.
 
@@ -85,13 +86,13 @@ This document was produced from eight published blog posts. It reproduces and co
 
 ---
 
-# 3. Have I Been Squatted (Typosquatting Detection)
+# 2. Have I Been Squatted (Typosquatting Detection)
 
-## 3.1 Purpose
+## 2.1 Purpose
 
 Attackers frequently register domains that look almost identical to a legitimate brand's domain, such as replacing a letter, adding a hyphen, or using a different top level domain. These lookalike domains are used for phishing, fake login pages, fraudulent email campaigns and brand impersonation. This is called typosquatting. Have I Been Squatted (HIBS) is an external service that continuously discovers these lookalike domains for a domain we choose to protect, and enriches each finding with DNS, WHOIS, IP, HTTP, SSL certificate and phishing risk information. This integration pulls that intelligence into Wazuh so a lookalike domain campaign against our brand becomes visible inside the same dashboard the security team already watches, instead of requiring a separate manual check on an external website.
 
-## 3.2 Architecture
+## 2.2 Architecture
 
 ```mermaid
 graph TD
@@ -110,18 +111,18 @@ graph TD
 
 A scheduled Python script reads a list of domains we own from a text file, queries the HIBS API once per domain, converts every returned intelligence event into a single line JSON record, and appends it to a log file. Wazuh reads that log file, decodes it as JSON, and a set of custom rules assign severity based on what kind of intelligence was found. A separate set of correlation rules raise the severity further when several signals land on the same lookalike domain, or when many lookalike domains target the same protected brand at once.
 
-## 3.3 Applicability to us
+## 2.3 Applicability to us
 
-> **Applicability:** This integration only requires a HIBS account and a domain we own. It does not depend on any other product or vendor decision, so it can be implemented as soon as the API key from Section 3.4 is obtained.
+> **Applicability:** This integration only requires a HIBS account and a domain we own. It does not depend on any other product or vendor decision, so it can be implemented as soon as the API key from Section 2.4 is obtained.
 
-## 3.4 Getting access
+## 2.4 Getting access
 
 1. Create an account at https://haveibeensquatted.com/.
 2. Open the account dashboard and locate the API section, then generate a new API key.
-3. Note the subscription tier attached to the account. The free or base tier returns basic squat candidate discovery only. GeoIP lookups, NXDOMAIN checks, WHOIS and RDAP registration intelligence, and phishing detection scoring require a paid Plus or Pro tier. If the account is on a lower tier, several of the rules in Section 3.7 below will simply never fire, which is expected behaviour and not a fault in the Wazuh configuration.
-4. Copy the generated API key somewhere temporary and secure. It will be placed into a protected file on the Wazuh server in Section 3.5 and should not be pasted anywhere else, including chat messages, tickets, or shared documents.
+3. Note the subscription tier attached to the account. The free or base tier returns basic squat candidate discovery only. GeoIP lookups, NXDOMAIN checks, WHOIS and RDAP registration intelligence, and phishing detection scoring require a paid Plus or Pro tier. If the account is on a lower tier, several of the rules in Section 2.7 below will simply never fire, which is expected behaviour and not a fault in the Wazuh configuration.
+4. Copy the generated API key somewhere temporary and secure. It will be placed into a protected file on the Wazuh server in Section 2.5 and should not be pasted anywhere else, including chat messages, tickets, or shared documents.
 
-## 3.5 Implementation steps
+## 2.5 Implementation steps
 
 ### Step 1: Store the API key outside the script
 
@@ -130,7 +131,7 @@ sudo mkdir -p /etc/hibs
 sudo nano /etc/hibs/hibs.env
 ```
 
-Add the following line, replacing the placeholder with the real key from Section 3.4:
+Add the following line, replacing the placeholder with the real key from Section 2.4:
 
 ```bash
 HIBS_API_TOKEN=<YOUR_HIBS_API_KEY>
@@ -177,7 +178,7 @@ sudo chown root:wazuh /var/ossec/integrations/hibs_wazuh.py
 sudo nano /var/ossec/integrations/hibs_wazuh.py
 ```
 
-Paste the following corrected script. Two data fidelity fixes have been applied relative to the source article, both explained in the corrections table in Section 3.6.
+Paste the following corrected script. Two data fidelity fixes have been applied relative to the source article, both explained in the corrections table in Section 2.6.
 
 ```python
 #!/usr/bin/env python3
@@ -702,7 +703,7 @@ sudo systemctl restart wazuh-manager
 sudo python3 /var/ossec/integrations/hibs_wazuh.py
 ```
 
-This will print a line for each domain being checked. Once complete, JSON events will have been appended to /var/log/hibs/hibs.json and Wazuh should generate alerts as described in Section 3.7.
+This will print a line for each domain being checked. Once complete, JSON events will have been appended to /var/log/hibs/hibs.json and Wazuh should generate alerts as described in Section 2.7.
 
 ### Step 8: Automate with cron
 
@@ -717,7 +718,7 @@ sudo crontab -e
 
 Choose an interval based on how many domains are in domains.txt, the account's API rate limits, and how quickly we need to know about a new lookalike domain. Checking every six hours is a reasonable starting point for a small number of protected domains.
 
-## 3.6 Corrections made to the source material
+## 2.6 Corrections made to the source material
 
 The following changes were made to the script published in the original blog post. None of these change the overall design of the integration, they only correct data handling edge cases that would otherwise silently discard valid intelligence.
 
@@ -779,7 +780,7 @@ def _coerce_bool(value):
     return ""
 ```
 
-*Why this was changed:* The original check only accepted a native Python boolean. Some upstream APIs represent boolean fields as the strings "true" or "false" rather than a JSON boolean, especially inside nested vendor specific payloads. The original code would silently drop that value to an empty string, which is exactly the kind of information loss the severity rules in Section 3.7 depend on avoiding. The corrected helper normalizes common string and boolean representations before storing the value.
+*Why this was changed:* The original check only accepted a native Python boolean. Some upstream APIs represent boolean fields as the strings "true" or "false" rather than a JSON boolean, especially inside nested vendor specific payloads. The original code would silently drop that value to an empty string, which is exactly the kind of information loss the severity rules in Section 2.7 depend on avoiding. The corrected helper normalizes common string and boolean representations before storing the value.
 
 **Correction 3**
 
@@ -803,7 +804,7 @@ Corrected version:
 
 *Why this was changed:* The original example file used two real, publicly known companies as sample data and contained three spelling errors in the comment text. Since this file is meant to be edited directly by our team, it has been replaced with clearly marked placeholders and corrected wording so nobody accidentally monitors a domain we do not own.
 
-## 3.7 Suggested severity model
+## 2.7 Suggested severity model
 
 The rule set in Step 6 follows a progressive severity model so that discovering a lookalike domain does not, by itself, immediately page anyone. Severity increases as more concrete evidence of real, active infrastructure accumulates.
 
@@ -814,23 +815,23 @@ The rule set in Step 6 follows a progressive severity model so that discovering 
 | High | Registration metadata exists, bitsquatting or homoglyph technique detected, active IP infrastructure, HTTP service detected | 100103, 100108, 100113, 100120, 100122, 100124 |
 | Very high / critical | Certificate activity, high or critical phishing risk score, multiple signals on one candidate, multiple candidates targeting the same brand | 100109, 100130, 100131, 100140 - 100148 |
 
-## 3.8 Testing and validation
+## 2.8 Testing and validation
 
 1. Run the script manually as shown in Step 7 and confirm it prints one "Checking <domain>" line per domain in domains.txt without errors.
 2. Confirm new lines appear in /var/log/hibs/hibs.json: tail -f /var/log/hibs/hibs.json
 3. In the Wazuh Dashboard, open Discover (or Threat Hunting) and filter on rule.groups: hibs to confirm events are being indexed.
-4. Confirm at least the base rule (100100) and the candidate rule (100102) are firing. If GeoIP, RDAP or phishing score rules never fire, check the HIBS account tier before assuming the Wazuh configuration is broken, as noted in Section 3.4.
+4. Confirm at least the base rule (100100) and the candidate rule (100102) are firing. If GeoIP, RDAP or phishing score rules never fire, check the HIBS account tier before assuming the Wazuh configuration is broken, as noted in Section 2.4.
 5. Optionally add a domain to domains.txt that is known to already have public lookalikes, to confirm the full pipeline end to end before relying on it for a domain that matters operationally.
 
 ---
 
-# 4. Filescan.io Threat Intelligence Ingestion
+# 3. Filescan.io Threat Intelligence Ingestion
 
-## 4.1 Purpose
+## 3.1 Purpose
 
 Filescan.io publishes a bulk feed of indicators of compromise (IOCs) covering malicious file hashes, IP addresses, domains, URLs and email addresses. Without this integration, an analyst who sees a suspicious IP, domain or file hash inside a Wazuh alert has to manually copy it out and check it against an external threat intelligence source one item at a time. This integration downloads Filescan.io's feed on a schedule, stores it locally on the Wazuh manager as lookup lists, and adds custom rules so that any log Wazuh already receives, from firewalls, DNS servers, proxies, endpoint file integrity monitoring or mail servers, is automatically checked against that feed with no per event external API call required.
 
-## 4.2 Architecture
+## 3.2 Architecture
 
 ```mermaid
 graph TD
@@ -848,17 +849,17 @@ graph TD
 
 A scheduled Python script downloads the feed as CSV, validates and normalizes every indicator, and writes five separate CDB (constant database) list files, one per indicator type. Wazuh loads these list files into memory when it starts or reloads. Ordinary rules then check specific fields in every incoming log line, such as the source IP or the DNS query name, against the appropriate list. A match produces an immediate alert without needing to contact Filescan.io again.
 
-## 4.3 Applicability to us
+## 3.3 Applicability to us
 
 > **Applicability:** This integration requires a Filescan.io account with API access to the bulk feed endpoint. It does not depend on any other vendor or product, so it can be implemented independently.
 
-## 4.4 Getting access
+## 3.4 Getting access
 
 1. Create an account at https://www.filescan.io/.
 2. Open account settings and generate an API key.
-3. Confirm the account's plan includes the bulk threat intelligence feed endpoint used in Section 4.5. Some enrichment fields and higher feed volumes are limited to paid tiers.
+3. Confirm the account's plan includes the bulk threat intelligence feed endpoint used in Section 3.5. Some enrichment fields and higher feed volumes are limited to paid tiers.
 
-## 4.5 Implementation steps
+## 3.5 Implementation steps
 
 ### Step 1: Store the API key
 
@@ -1246,7 +1247,7 @@ sudo crontab -e
 15 2 * * * root /usr/bin/python3 /var/ossec/integrations/filescan_sync.py --env-file /etc/filescan/filescan.env >> /var/log/filescan_sync.log 2>&1
 ```
 
-## 4.6 Corrections made to the source material
+## 3.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -1286,9 +1287,9 @@ if len(values) == 0:
 write_cdb(dest, values)
 ```
 
-*Why this was changed:* If the Filescan.io feed endpoint ever returned an empty or malformed response for one indicator type (for example a temporary API issue), the original script would still overwrite the previous, good CDB list with an empty one, silently disabling detection for that entire indicator type until the next successful sync. The corrected version keeps the previous list file untouched and only logs a warning when zero valid indicators were parsed, matching the safer behaviour already used by the InsecureWeb integration in Section 7.
+*Why this was changed:* If the Filescan.io feed endpoint ever returned an empty or malformed response for one indicator type (for example a temporary API issue), the original script would still overwrite the previous, good CDB list with an empty one, silently disabling detection for that entire indicator type until the next successful sync. The corrected version keeps the previous list file untouched and only logs a warning when zero valid indicators were parsed, matching the safer behaviour already used by the InsecureWeb integration in Section 6.
 
-## 4.7 Field mapping reference
+## 3.7 Field mapping reference
 
 Because different log sources name the same concept differently, several rules exist purely to point the same CDB list at a different field name. Use this table to confirm coverage for the log sources we actually have.
 
@@ -1300,22 +1301,22 @@ Because different log sources name the same concept differently, several rules e
 | Email address | filescan-emails | data.email.from, data.email.to | 100230, 100231 |
 | File hash (md5/sha1/sha256/sha512) | filescan-hashes | md5, sha1, sha256, syscheck.md5_after, syscheck.sha256_after | 100240 - 100244 |
 
-## 4.8 Testing and validation
+## 3.8 Testing and validation
 
 1. After Step 6, confirm each CDB file has more than one line: wc -l /var/ossec/etc/lists/filescan/*
 2. Pick one real indicator from a list, for example a domain from filescan-domains, and generate a test DNS query log entry containing that exact domain on a monitored endpoint.
-3. Confirm a Wazuh alert is generated citing one of the rule IDs in Section 4.7, and that the alert description includes the matched value.
+3. Confirm a Wazuh alert is generated citing one of the rule IDs in Section 3.7, and that the alert description includes the matched value.
 4. Repeat with a value that is deliberately not in any list, and confirm no alert is generated, to rule out an overly broad rule condition.
 
 ---
 
-# 5. Shodan.io Attack Surface and IoT Monitoring
+# 4. Shodan.io Attack Surface and IoT Monitoring
 
-## 5.1 Purpose
+## 4.1 Purpose
 
 Shodan.io continuously scans the public internet and records what services, ports and certificates are visible on any given IP address or hostname. This integration uses Shodan to monitor a list of assets we consider critical, such as our Wazuh server itself, our public website, or any other public facing IP or domain. Rather than reporting everything Shodan sees every time, the integration compares each day's result against the previous day's result and only raises an alert when something actually changed, for example a new port opening, a new CVE appearing against a known service, or an asset becoming publicly visible for the first time. This gives us a way to notice unintended exposure of our own infrastructure quickly, rather than discovering it after it has already been used against us.
 
-## 5.2 Architecture
+## 4.2 Architecture
 
 ```mermaid
 graph TD
@@ -1333,17 +1334,17 @@ graph TD
 
 A daily scheduled Python script reads our list of critical assets, queries the Shodan Host API for each one, and compares the result against a saved state file from the previous run. Differences are converted into boolean flags such as first_appeared_in_shodan or became_exposed, and written as JSON events to a log file. Wazuh reads that file and a flat set of rules translate each boolean flag directly into an alert level. A separate health check confirms the script itself is running on schedule and that the API key is still valid.
 
-## 5.3 Applicability to us
+## 4.3 Applicability to us
 
 > **Applicability:** This integration only needs a Shodan account and a list of IPs or hostnames we own, such as the public IP of the Hostinger VPS this Wazuh server runs on. It does not depend on any other vendor decision.
 
-## 5.4 Getting access
+## 4.4 Getting access
 
 1. Create an account at https://www.shodan.io/.
 2. Open the account page and copy the API key shown there.
 3. Note the plan's query credit allowance. The Host API lookup used by this integration consumes one query credit per asset per run, so the number of assets we monitor and how often we run the script should stay comfortably under the plan's daily or monthly allowance.
 
-## 5.5 Implementation steps
+## 4.5 Implementation steps
 
 ### Step 1: Store the API key
 
@@ -1772,7 +1773,7 @@ sudo crontab -e
 0 */6 * * * root /usr/bin/python3 /var/ossec/integrations/shodan_monitor.py --health-check-only --env-file /etc/shodan/shodan.env >> /var/log/shodan/cron.log 2>&1
 ```
 
-## 5.6 Corrections made to the source material
+## 4.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -1813,7 +1814,7 @@ diff_lists(old, new):
 
 *Why this was changed:* The original diff function assumes every element of the old and new lists is directly hashable and of a consistent type. Shodan can occasionally return a port or CVE identifier as either a string or a number depending on the API response, and if the type differs between two runs, the same value read as an int one day and a str the next would be reported as both added and removed, producing a false change alert even though nothing actually changed. Casting both sides to string before comparison removes this false positive.
 
-## 5.7 Rule reference
+## 4.7 Rule reference
 
 | Condition | New rule ID | Level | Meaning |
 | --- | --- | --- | --- |
@@ -1825,7 +1826,7 @@ diff_lists(old, new):
 | shodan_api_failed = true | 100316 | 14 | The Shodan API key is invalid or the API is unreachable |
 | missing_daily_execution | 100318 | 14 | The daily scheduled scan did not run within the expected window |
 
-## 5.8 Testing and validation
+## 4.8 Testing and validation
 
 1. Run Step 7 twice in a row without changing anything and confirm the second run produces no change alerts, only a routine informational event.
 2. Temporarily add a test asset known to be internet facing and confirm first_appeared_in_shodan fires on its first check.
@@ -1834,13 +1835,13 @@ diff_lists(old, new):
 
 ---
 
-# 6. urlscan.io Automated URL Reputation Enrichment
+# 5. urlscan.io Automated URL Reputation Enrichment
 
-## 6.1 Purpose
+## 5.1 Purpose
 
 When Wazuh generates an alert that happens to contain a URL, for example from a proxy log, an email gateway log, or an endpoint log, an analyst normally has to manually copy that URL out and check it against a reputation service such as urlscan.io. This integration automates that step. It reacts to Wazuh's own alerts as they are generated, extracts any URL found inside them, checks urlscan.io for an existing reputation verdict, and writes the result back in as a new, enriched event so the final alert severity reflects whether the URL is actually known to be malicious rather than just being a URL.
 
-## 6.2 Architecture
+## 5.2 Architecture
 
 ```mermaid
 graph TD
@@ -1858,17 +1859,17 @@ graph TD
 
 Unlike the other scheduled integrations in this document, this one is event driven. It is registered with Wazuh as an integration script that runs automatically whenever Wazuh generates an alert at or above a chosen severity level. The script searches the full alert for anything URL shaped, ignores known safe domains, checks a 24 hour local cache to avoid repeating a lookup, queries urlscan.io, and writes a new enrichment event that Wazuh reads back in through its normal log collector.
 
-## 6.3 Applicability to us
+## 5.3 Applicability to us
 
 > **Applicability:** This integration only needs a urlscan.io account. It works on top of whatever alerts our Wazuh server already generates from any other source, so it becomes more useful as we add more log sources (proxy, email, endpoint) that can contain URLs in their alert text.
 
-## 6.4 Getting access
+## 5.4 Getting access
 
 1. Create an account at https://urlscan.io/.
 2. Open the account API section and generate an API key.
 3. Note the plan's request quota. Because this script only queries urlscan.io's Search and Result endpoints for URLs that already have a public scan history, and caches results locally for 24 hours, request volume is normally low, but it will scale with how many qualifying alerts Wazuh generates per day.
 
-## 6.5 Implementation steps
+## 5.5 Implementation steps
 
 ### Step 1: Store the API key
 
@@ -2189,7 +2190,7 @@ sudo /var/ossec/bin/wazuh-analysisd -t
 sudo systemctl restart wazuh-manager
 ```
 
-## 6.6 Corrections made to the source material
+## 5.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -2228,13 +2229,13 @@ Corrected version:
 </rule>
 ```
 
-*Why this was changed:* The original blog post's own text warns the reader to manually disable the base enrichment rule after confirming the integration works, because it fires on every single successful lookup regardless of the verdict, which floods the alert index. Rather than relying on a manual step someone has to remember to do later, the base rule here is documented as level 3 (already the lowest alertable tier) and the corrections table calls this out explicitly in Section 6.7 so whoever deploys this integration can decide up front whether to also set this rule's level to 0 to fully silence it, instead of finding out about the noise after the fact.
+*Why this was changed:* The original blog post's own text warns the reader to manually disable the base enrichment rule after confirming the integration works, because it fires on every single successful lookup regardless of the verdict, which floods the alert index. Rather than relying on a manual step someone has to remember to do later, the base rule here is documented as level 3 (already the lowest alertable tier) and the corrections table calls this out explicitly in Section 5.7 so whoever deploys this integration can decide up front whether to also set this rule's level to 0 to fully silence it, instead of finding out about the noise after the fact.
 
-## 6.7 Operational note: noisy base rule
+## 5.7 Operational note: noisy base rule
 
-> **Recommendation:** Rule 100400 fires on every successful urlscan.io enrichment lookup, whether the URL turned out to be malicious or completely clean. At level 3 this will not page anyone, but it will still appear in the alert index and can generate significant volume if many alerts contain URLs. After confirming the integration works end to end using Section 6.8, consider lowering rule 100400 to level 0 so it stops generating visible alerts entirely and exists purely as a parent gate for rules 100401 through 100405.
+> **Recommendation:** Rule 100400 fires on every successful urlscan.io enrichment lookup, whether the URL turned out to be malicious or completely clean. At level 3 this will not page anyone, but it will still appear in the alert index and can generate significant volume if many alerts contain URLs. After confirming the integration works end to end using Section 5.8, consider lowering rule 100400 to level 0 so it stops generating visible alerts entirely and exists purely as a parent gate for rules 100401 through 100405.
 
-## 6.8 Testing and validation
+## 5.8 Testing and validation
 
 1. Generate a test Wazuh alert at level 5 or higher that contains a URL known to be flagged malicious on urlscan.io (search urlscan.io's own site for a current public example, do not visit the URL itself).
 2. Confirm the enrichment script ran: check /var/log/urlscan/urlscan.json for a new line.
@@ -2244,13 +2245,13 @@ Corrected version:
 
 ---
 
-# 7. InsecureWeb Threat Intelligence Ingestion
+# 6. InsecureWeb Threat Intelligence Ingestion
 
-## 7.1 Purpose
+## 6.1 Purpose
 
-InsecureWeb publishes bulk threat intelligence feeds covering malicious IP addresses, domains, hostnames and file hashes (MD5 and SHA256). This integration is functionally similar to the Filescan.io integration in Section 4, downloading a feed on a schedule and loading it into Wazuh as CDB lookup lists so that logs Wazuh already receives are checked automatically. The main practical difference is the feed format: InsecureWeb distributes its feeds as compressed tar.gz archives rather than plain CSV, which introduces a specific security concern (path traversal during extraction) that is handled explicitly in this integration and explained in Section 7.6.
+InsecureWeb publishes bulk threat intelligence feeds covering malicious IP addresses, domains, hostnames and file hashes (MD5 and SHA256). This integration is functionally similar to the Filescan.io integration in Section 3, downloading a feed on a schedule and loading it into Wazuh as CDB lookup lists so that logs Wazuh already receives are checked automatically. The main practical difference is the feed format: InsecureWeb distributes its feeds as compressed tar.gz archives rather than plain CSV, which introduces a specific security concern (path traversal during extraction) that is handled explicitly in this integration and explained in Section 6.6.
 
-## 7.2 Architecture
+## 6.2 Architecture
 
 ```mermaid
 graph TD
@@ -2266,17 +2267,17 @@ graph TD
 
 *Figure 7.1: InsecureWeb data flow into Wazuh*
 
-## 7.3 Applicability to us
+## 6.3 Applicability to us
 
-> **Applicability:** This integration only needs an InsecureWeb account. It provides similar coverage to Filescan.io in Section 4. Running both is reasonable if we want redundancy across two independent intelligence sources, since neither one is guaranteed to catch everything the other does.
+> **Applicability:** This integration only needs an InsecureWeb account. It provides similar coverage to Filescan.io in Section 3. Running both is reasonable if we want redundancy across two independent intelligence sources, since neither one is guaranteed to catch everything the other does.
 
-## 7.4 Getting access
+## 6.4 Getting access
 
 1. Create an account with InsecureWeb / ThreatWinds at their portal.
 2. Generate an API key or token for feed access.
-3. Confirm the account tier includes the accumulative level1 feed endpoints used in Section 7.5 for ip, domain, hostname, md5 and sha256.
+3. Confirm the account tier includes the accumulative level1 feed endpoints used in Section 6.5 for ip, domain, hostname, md5 and sha256.
 
-## 7.5 Implementation steps
+## 6.5 Implementation steps
 
 ### Step 1: Store the API key
 
@@ -2577,7 +2578,7 @@ sudo crontab -e
 30 1 * * * root /usr/bin/python3 /var/ossec/integrations/insecureweb_sync.py --env-file /etc/insecureweb/insecureweb.env >> /var/log/insecureweb_sync.log 2>&1
 ```
 
-## 7.6 Corrections made to the source material
+## 6.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -2594,7 +2595,7 @@ Corrected version:
 n/a for this integration
 ```
 
-*Why this was changed:* InsecureWeb's own decoding relies entirely on Wazuh's built in SSH decoder rather than a custom decoder, so it does not carry the backslash-dot regex issue found in the Sophos Firewall decoder (Section 10.6). It is listed here only so the reader is aware this class of issue was checked for in every integration, not just the ones where it was found.
+*Why this was changed:* InsecureWeb's own decoding relies entirely on Wazuh's built in SSH decoder rather than a custom decoder, so it does not carry the backslash-dot regex issue found in the Sophos Firewall decoder (Section 9.6). It is listed here only so the reader is aware this class of issue was checked for in every integration, not just the ones where it was found.
 
 **Correction 2**
 
@@ -2630,7 +2631,7 @@ Corrected version:
 
 *Why this was changed:* In the original ruleset, the destination IP rule matches against any log source, but the source IP rule was only wired to fire underneath the built in SSH failed login rule (5716), so a malicious source IP appearing in any log type other than an SSH login attempt, for example a firewall or web server log, would never be checked at all. This was very likely intentional for the purpose of the author's specific demonstration (an SSH brute force test), but left as the only source IP rule it silently narrows detection coverage in a production deployment. The corrected version keeps the original SSH specific rule for that use case and adds a second, general purpose source IP rule with no parent gate, so both the specific demonstration scenario and general coverage are handled.
 
-## 7.7 Rule reference
+## 6.7 Rule reference
 
 | Indicator type | CDB list | New rule IDs |
 | --- | --- | --- |
@@ -2642,7 +2643,7 @@ Corrected version:
 | MD5 hash | insecureweb-md5 | 100506 |
 | SHA256 hash | insecureweb-sha256 | 100507 |
 
-## 7.8 Testing and validation
+## 6.8 Testing and validation
 
 1. After Step 6, confirm five CDB files exist under /var/ossec/etc/lists/ and are non-empty.
 2. Confirm a backup copy was created under /var/ossec/etc/lists/insecureweb-backups/ on the second run onward.
@@ -2651,13 +2652,13 @@ Corrected version:
 
 ---
 
-# 8. Symantec EDR Integration
+# 7. Symantec EDR Integration
 
-## 8.1 Purpose
+## 7.1 Purpose
 
 Symantec Endpoint Security (Symantec EDR) generates its own endpoint detections and incidents inside its cloud console. Without this integration, that data stays siloed in Symantec's own interface and an analyst has to check two separate tools to get a full picture of an endpoint. This integration polls Symantec's cloud API on a schedule, pulls both incident level and event level detail, and writes it into Wazuh so endpoint detections sit alongside every other log source in the same dashboard, and can be correlated against network, firewall and threat intelligence events already flowing into the same Wazuh manager.
 
-## 8.2 Architecture
+## 7.2 Architecture
 
 ```mermaid
 graph TD
@@ -2676,17 +2677,17 @@ graph TD
 
 Two independent, continuously running background services authenticate to Symantec's cloud using OAuth2 client credentials. One polls incident level data, the other polls the more granular events inside each incident. Both flatten the nested JSON Symantec returns into simple dot notation fields and append one line per record to local JSONL files, tracking which record IDs have already been processed so a service restart does not reprocess old data. Wazuh reads these files, decodes the fields, and a large rule set assigns severity based on suspicion score, MITRE ATT&CK technique, process relationships and correlation between multiple weaker signals.
 
-## 8.3 Applicability to us
+## 7.3 Applicability to us
 
 > **Applicability: Not applicable to us at this time:** This integration only makes sense if we already hold, or later purchase, a Symantec Endpoint Security / Symantec EDR license, since it consumes that product's API. We have not confirmed we hold such a license. This section is included for completeness and so the team has a ready to use reference if Symantec is adopted; it is not applicable to our environment today unless that changes.
 
-## 8.4 Getting access
+## 7.4 Getting access
 
 1. Confirm we hold an active Symantec Endpoint Security license that includes EDR/ICDm cloud console access.
 2. In the Symantec cloud console (ICDm), create an OAuth2 client (client ID and client secret) with read access to incidents and events.
 3. Note the specific regional API base URL for our tenant, this varies by Symantec cloud region.
 
-## 8.5 Implementation steps
+## 7.5 Implementation steps
 
 ### Step 1: Store credentials
 
@@ -2921,7 +2922,7 @@ sudo systemctl status symantec-incidents.service
 
 ### Step 5: Create the detection rules
 
-The rule set below is renumbered into the 100600 to 100699 block. During renumbering, a duplicate rule ID collision present in the original blog post was found and resolved; see Section 8.6 for full detail. Only a representative, complete subset covering every category described in Section 8.2 is shown here in full; the base structure, MITRE mapping pattern, and correlation pattern shown are sufficient to extend the same numbering block for any additional categories as needed.
+The rule set below is renumbered into the 100600 to 100699 block. During renumbering, a duplicate rule ID collision present in the original blog post was found and resolved; see Section 7.6 for full detail. Only a representative, complete subset covering every category described in Section 7.2 is shown here in full; the base structure, MITRE mapping pattern, and correlation pattern shown are sufficient to extend the same numbering block for any additional categories as needed.
 
 ```xml
 <group name="symantec_edr,">
@@ -3014,7 +3015,7 @@ The rule set below is renumbered into the 100600 to 100699 block. During renumbe
 
   <!-- ================================================ -->
   <!-- APPLICATION CONTROL - renumbered to resolve the   -->
-  <!-- duplicate-ID collision described in Section 8.6   -->
+  <!-- duplicate-ID collision described in Section 7.6   -->
   <!-- ================================================ -->
 
   <rule id="100640" level="3">
@@ -3106,7 +3107,7 @@ sudo /var/ossec/bin/wazuh-analysisd -t
 sudo systemctl restart wazuh-manager
 ```
 
-## 8.6 Corrections made to the source material
+## 7.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -3166,9 +3167,9 @@ except Exception:
     continue
 ```
 
-*Why this was changed:* The published polling loop treated every error identically with a flat 30 second retry, including HTTP 429 (rate limited) responses. If Symantec's API returns a Retry-After header, ignoring it and retrying every 30 seconds regardless can extend or repeat the rate limiting condition rather than resolving it. The corrected version reads the Retry-After header when present and waits that long, capped at 10 minutes, matching the more careful rate-limit handling already used in the CrowdStrike integration in Section 9.
+*Why this was changed:* The published polling loop treated every error identically with a flat 30 second retry, including HTTP 429 (rate limited) responses. If Symantec's API returns a Retry-After header, ignoring it and retrying every 30 seconds regardless can extend or repeat the rate limiting condition rather than resolving it. The corrected version reads the Retry-After header when present and waits that long, capped at 10 minutes, matching the more careful rate-limit handling already used in the CrowdStrike integration in Section 8.
 
-## 8.7 Rule category reference
+## 7.7 Rule category reference
 
 | Category | Example rule IDs | Level range |
 | --- | --- | --- |
@@ -3180,7 +3181,7 @@ except Exception:
 | Malware Protection events | 100670 - 100675 | 3 - 13 |
 | Correlation rules (MITRE tactic co-occurrence, off-hours) | 100680 - 100683 | 9 - 12 |
 
-## 8.8 Testing and validation
+## 7.8 Testing and validation
 
 1. Confirm both systemd services are active: systemctl status symantec-incidents.service symantec-incident-events.service
 2. Confirm both JSONL log files are receiving new lines within a few minutes of the services starting.
@@ -3190,13 +3191,13 @@ except Exception:
 
 ---
 
-# 9. CrowdStrike Falcon EDR Integration
+# 8. CrowdStrike Falcon EDR Integration
 
-## 9.1 Purpose
+## 8.1 Purpose
 
-CrowdStrike Falcon is an endpoint detection and response platform. Like the Symantec integration in Section 8, this integration pulls CrowdStrike's own detections and incidents into Wazuh so endpoint telemetry sits in the same place as every other log source. The architecture is very similar to the Symantec integration, two background services polling a vendor cloud API using OAuth2, but the resulting Wazuh rule set is deliberately simpler, since it relies more directly on CrowdStrike's own pre-computed severity score rather than adding a large amount of additional correlation logic inside Wazuh itself.
+CrowdStrike Falcon is an endpoint detection and response platform. Like the Symantec integration in Section 7, this integration pulls CrowdStrike's own detections and incidents into Wazuh so endpoint telemetry sits in the same place as every other log source. The architecture is very similar to the Symantec integration, two background services polling a vendor cloud API using OAuth2, but the resulting Wazuh rule set is deliberately simpler, since it relies more directly on CrowdStrike's own pre-computed severity score rather than adding a large amount of additional correlation logic inside Wazuh itself.
 
-## 9.2 Architecture
+## 8.2 Architecture
 
 ```mermaid
 graph TD
@@ -3212,17 +3213,17 @@ graph TD
 
 *Figure 9.1: CrowdStrike Falcon data flow into Wazuh*
 
-## 9.3 Applicability to us
+## 8.3 Applicability to us
 
 > **Applicability: Not applicable to us at this time:** This integration only makes sense if we already hold, or later purchase, a CrowdStrike Falcon subscription with API access enabled, since it consumes that product's API. We have not confirmed we hold such a subscription. This section is included for completeness and so the team has a ready to use reference if CrowdStrike is adopted; it is not applicable to our environment today unless that changes.
 
-## 9.4 Getting access
+## 8.4 Getting access
 
 1. Confirm we hold an active CrowdStrike Falcon subscription.
 2. In the Falcon console, under Support and resources, API Clients and Keys, create a new API client with read scope for Detections and Incidents.
 3. Note the correct regional API base URL for our CrowdStrike cloud (for example api.crowdstrike.com or a regional variant such as api.us-2.crowdstrike.com), this is specific to the tenant and must be confirmed in the Falcon console, not assumed.
 
-## 9.5 Implementation steps
+## 8.5 Implementation steps
 
 ### Step 1: Store credentials
 
@@ -3540,7 +3541,7 @@ sudo systemctl enable --now crowdstrike-incidents.service
 
   <!-- CORRECTED severity ladder: previously 100704-100706 (critical/high/
        medium) were all set to the same level (15) in the source article,
-       collapsing three tiers into one. See Section 9.6. -->
+       collapsing three tiers into one. See Section 8.6. -->
 
   <rule id="100704" level="15">
     <if_sid>100703</if_sid>
@@ -3580,7 +3581,7 @@ sudo /var/ossec/bin/wazuh-analysisd -t
 sudo systemctl restart wazuh-manager
 ```
 
-## 9.6 Corrections made to the source material
+## 8.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -3628,7 +3629,7 @@ for i in incidents:
 
 *Why this was changed:* The published incidents collector accesses i['incident_id'] with direct dictionary indexing, which raises an unhandled KeyError and crashes the entire polling service if CrowdStrike ever returns an incident object without that field. The equivalent detections collector in the same article already guards against a missing ID safely. The corrected version applies the same defensive pattern to the incidents collector for consistency, so a single malformed record cannot take down the whole background service.
 
-## 9.7 Rule reference
+## 8.7 Rule reference
 
 | Source | Condition | New rule ID | Corrected level |
 | --- | --- | --- | --- |
@@ -3643,22 +3644,22 @@ for i in incidents:
 | Incidents | fine_score low (20-39) | 100707 | 6 |
 | Incidents | fine_score informational (0-19) | 100708 | 3 |
 
-## 9.8 Testing and validation
+## 8.8 Testing and validation
 
 1. Confirm both systemd services are active and both log files are receiving data.
 2. Download the EICAR standard antivirus test file on a CrowdStrike protected endpoint (this is a harmless, industry standard string used specifically to validate antivirus and EDR pipelines, it contains no real malicious code) and confirm CrowdStrike generates a detection for it.
-3. Confirm that detection appears in Wazuh with the correct rule ID from Section 9.7 based on the severity CrowdStrike assigned.
-4. Manually create a test incident record with a mocked medium fine_score value in a local copy of the log file and confirm it is now correctly distinguished from a critical one after the Section 9.6 fix, unlike the original flat level 15 behaviour.
+3. Confirm that detection appears in Wazuh with the correct rule ID from Section 8.7 based on the severity CrowdStrike assigned.
+4. Manually create a test incident record with a mocked medium fine_score value in a local copy of the log file and confirm it is now correctly distinguished from a critical one after the Section 8.6 fix, unlike the original flat level 15 behaviour.
 
 ---
 
-# 10. Sophos Firewall Integration
+# 9. Sophos Firewall Integration
 
-## 10.1 Purpose
+## 9.1 Purpose
 
 A firewall sees every allowed and denied connection crossing the network boundary, along with application identification, content filtering decisions, VPN activity and intrusion prevention events. This integration brings that visibility into Wazuh by having the Sophos firewall send its logs directly to the Wazuh server over syslog. Unlike every other integration in this document, there is no Python script and no external API involved, the firewall pushes logs to Wazuh directly.
 
-## 10.2 Architecture
+## 9.2 Architecture
 
 ```mermaid
 graph TD
@@ -3673,17 +3674,17 @@ graph TD
 
 The Sophos firewall is configured to forward selected log categories to the Wazuh server's IP address over syslog, typically UDP port 514. Wazuh's remote syslog listener receives these lines, restricted to only accept them from the firewall's own IP address. A custom decoder chain extracts more than fifty key value fields from Sophos's native log format, and a tiered set of rules classifies traffic from routine baseline logging up through critical, frequency based and content based detections.
 
-## 10.3 Applicability to us
+## 9.3 Applicability to us
 
 > **Applicability: Not applicable to us unless our firewall is confirmed to be Sophos:** This integration only applies if our network firewall is a Sophos XG or XGS device. We have not confirmed our firewall vendor. If our firewall is a different vendor, this section's decoder and rules are Sophos specific and will need vendor specific adaptation; the architecture pattern (syslog forwarding into Wazuh's remote listener) is still broadly reusable for most firewall vendors, but the field names and log format will differ.
 
-## 10.4 Getting access
+## 9.4 Getting access
 
 1. Confirm the make and model of our current network firewall. This integration only applies as written if it is a Sophos XG or XGS device.
 2. If it is a Sophos device, obtain administrative access to its web console to configure syslog forwarding.
 3. No external account or API key is required for this integration; it is entirely a firewall-to-Wazuh configuration.
 
-## 10.5 Implementation steps
+## 9.5 Implementation steps
 
 ### Step 1: Open the syslog port on the Wazuh server
 
@@ -3715,14 +3716,14 @@ sudo systemctl restart wazuh-manager
 ### Step 3: Configure Sophos to forward logs
 
 1. In the Sophos web console, go to Configure, System services, Log settings.
-2. Add a new syslog server entry pointing to <WAZUH_MANAGER_IP>, port 514, protocol UDP (or TCP if preferred, see the note in Section 10.9).
+2. Add a new syslog server entry pointing to <WAZUH_MANAGER_IP>, port 514, protocol UDP (or TCP if preferred, see the note in Section 9.9).
 3. Set the facility to DAEMON and severity to Debug to capture full detail.
 4. Enable the log categories we want forwarded: Firewall rule log, Intrusion Prevention, Denied packets, IP spoofing, VPN, Application filter, as applicable to what we want visibility into.
 5. Save and apply the configuration.
 
 ### Step 4: Create the decoder
 
-The full decoder extracts more than fifty fields. A representative, corrected subset is shown below, covering every field category referenced by the rules in Step 5. The corrected regex pattern (.*) is used throughout; see Section 10.6 for why this matters.
+The full decoder extracts more than fifty fields. A representative, corrected subset is shown below, covering every field category referenced by the rules in Step 5. The corrected regex pattern (.*) is used throughout; see Section 9.6 for why this matters.
 
 ```xml
 <decoder name="sophos_firewall">
@@ -3937,7 +3938,7 @@ The full decoder extracts more than fifty fields. A representative, corrected su
   <rule id="100873" level="5">
     <if_sid>100800</if_sid>
     <field name="dst_country">CHN|RUS|PRK|IRN</field>
-    <description>Sophos XG - connection to potentially high risk country: $(dst_country) (see Section 10.7 tuning guidance)</description>
+    <description>Sophos XG - connection to potentially high risk country: $(dst_country) (see Section 9.7 tuning guidance)</description>
   </rule>
 
 </group>
@@ -3948,7 +3949,7 @@ sudo /var/ossec/bin/wazuh-analysisd -t
 sudo systemctl restart wazuh-manager
 ```
 
-## 10.6 Corrections made to the source material
+## 9.6 Corrections made to the source material
 
 **Correction 1**
 
@@ -3972,7 +3973,7 @@ Corrected version:
 </decoder>
 ```
 
-*Why this was changed:* This is the most significant issue found across all eight source articles. In regular expressions, \\. matches a single literal dot character, so \\.* matches zero or more literal dots, meaning the capture group in the original decoder would only successfully capture a run of dot characters or an empty string, not the actual field value between the quotes. The intended pattern was the ordinary wildcard .* (any character, zero or more times), with no backslash. This exact typo was copied across essentially every one of the roughly fifty quoted-string field decoders in the original article, since they all appear to have been built from the same template. Left uncorrected, most of the quoted string fields in this decoder chain (src_ip, dst_ip, fw_rule_name, app_name, user_name, and others) would not actually populate correctly, silently breaking the great majority of the rules in Section 10.5 that depend on them. Every occurrence has been corrected to .* in the decoder shown in Step 4.
+*Why this was changed:* This is the most significant issue found across all eight source articles. In regular expressions, \\. matches a single literal dot character, so \\.* matches zero or more literal dots, meaning the capture group in the original decoder would only successfully capture a run of dot characters or an empty string, not the actual field value between the quotes. The intended pattern was the ordinary wildcard .* (any character, zero or more times), with no backslash. This exact typo was copied across essentially every one of the roughly fifty quoted-string field decoders in the original article, since they all appear to have been built from the same template. Left uncorrected, most of the quoted string fields in this decoder chain (src_ip, dst_ip, fw_rule_name, app_name, user_name, and others) would not actually populate correctly, silently breaking the great majority of the rules in Section 9.5 that depend on them. Every occurrence has been corrected to .* in the decoder shown in Step 4.
 
 **Correction 2**
 
@@ -3990,13 +3991,13 @@ Corrected version:
 <!-- retained, with an explicit tuning note added below -->
 ```
 
-*Why this was changed:* This rule is not a functional bug, but it is flagged here because the original article includes it with no caveat, unlike its own explicit warnings elsewhere (for example about disabling the noisy urlscan.io base rule, covered in Section 6.7). A static country based rule will alert on all traffic to or from the listed countries regardless of whether the specific destination is actually malicious, which is very likely to produce a meaningful number of false positives for any organization with legitimate business, hosting, or user traffic touching those regions. It has been kept in the ruleset below exactly as published, but Section 10.7 adds the tuning guidance the original article omitted, so whoever enables it does so with that context rather than discovering the false positive rate after the fact.
+*Why this was changed:* This rule is not a functional bug, but it is flagged here because the original article includes it with no caveat, unlike its own explicit warnings elsewhere (for example about disabling the noisy urlscan.io base rule, covered in Section 5.7). A static country based rule will alert on all traffic to or from the listed countries regardless of whether the specific destination is actually malicious, which is very likely to produce a meaningful number of false positives for any organization with legitimate business, hosting, or user traffic touching those regions. It has been kept in the ruleset below exactly as published, but Section 9.7 adds the tuning guidance the original article omitted, so whoever enables it does so with that context rather than discovering the false positive rate after the fact.
 
-## 10.7 Tuning guidance for the geographic rule
+## 9.7 Tuning guidance for the geographic rule
 
 > **Recommendation:** Rule 100873 (destination country match) is a blunt instrument: it flags all traffic to or from the four listed countries, not just traffic to actually malicious destinations there. Before enabling this rule at a level that generates a visible alert, review at least one week of baseline traffic logs to estimate how often it would fire under normal business activity, and consider raising its level or adding it to a lower priority dashboard view rather than an actively monitored alert queue if the false positive rate is high. The country list itself should also be reviewed against our actual threat model and legitimate business geography before deployment, rather than being kept exactly as published in the source article.
 
-## 10.8 Rule tier reference
+## 9.8 Rule tier reference
 
 | Tier | Purpose | Example rule IDs | Level range |
 | --- | --- | --- | --- |
@@ -4007,23 +4008,23 @@ Corrected version:
 | Frequency based | Repeated denials from same source in a short window (scan/brute-force pattern) | 100840 | 8 |
 | Traffic categorization (non-alerting) | Social/entertainment application traffic, logged for reporting only | 100865 | 0 |
 
-## 10.9 Operational notes
+## 9.9 Operational notes
 
 - UDP syslog has no delivery guarantee. If the Wazuh manager is briefly overloaded or a packet is dropped in transit, that log line is lost permanently with no retry. If Sophos supports TCP syslog forwarding and log completeness matters more than the small amount of additional overhead, configure TCP instead of UDP in both Step 2 and Step 3.
 - The allowed-ips restriction in Step 2 is the only access control on this listener. Confirm it is set correctly before relying on this integration, since an incorrectly configured or missing allowed-ips value would let any host that can reach the Wazuh server on port 514 inject arbitrary syslog lines that Wazuh will attempt to decode and alert on.
 
-## 10.10 Testing and validation
+## 9.10 Testing and validation
 
 1. After Step 3, generate any outbound connection from a device behind the firewall and confirm a baseline event (rule 100800) appears in the Wazuh Dashboard within a few seconds.
-2. Confirm the src_ip, dst_ip and fw_rule_name fields in that event are populated with real values, not empty or literal dot characters, to specifically confirm the Section 10.6 regex fix is in effect.
+2. Confirm the src_ip, dst_ip and fw_rule_name fields in that event are populated with real values, not empty or literal dot characters, to specifically confirm the Section 9.6 regex fix is in effect.
 3. Deliberately trigger a denied connection (for example attempt to reach a port that is blocked) and confirm rule 100810 or 100820 fires as expected.
 4. Send repeated denied connection attempts from the same source within a five minute window and confirm the frequency rule 100840 fires once the threshold is reached.
 
 ---
 
-# 11. Cross-Integration Comparison
+# 10. Cross-Integration Comparison
 
-## 11.1 Architecture patterns used
+## 10.1 Architecture patterns used
 
 The eight integrations in this document use four distinct architectural patterns for getting external data into Wazuh. Recognizing which pattern a given integration follows makes it much faster to understand, extend, or troubleshoot, since the same pattern's failure modes and testing approach carry across every integration that uses it.
 
@@ -4031,64 +4032,64 @@ The eight integrations in this document use four distinct architectural patterns
 | --- | --- | --- | --- |
 | Scheduled pull with Python-side scoring | Have I Been Squatted (3), Shodan.io (5) | A cron job calls an external API, computes severity or change detection in Python, and Wazuh mostly relays pre-computed flags into alert levels. | Cron job silently stops running; API key expires without an obvious error. |
 | Scheduled pull with CDB list matching | Filescan.io (4), InsecureWeb (7) | A cron job downloads a bulk feed and writes it as Wazuh CDB lookup lists. Wazuh itself performs the matching against every incoming log, with no live API call per event. | Feed download fails and an old, stale list is used without anyone noticing; a malformed feed silently produces an empty list. |
-| Event-driven enrichment | urlscan.io (6) | Wazuh's own alert generation triggers the integration script directly, which enriches the alert with an external reputation lookup and writes a new event. | The lookup runs too often without caching, or the base enrichment rule floods the alert index (see Section 6.7). |
+| Event-driven enrichment | urlscan.io (6) | Wazuh's own alert generation triggers the integration script directly, which enriches the alert with an external reputation lookup and writes a new event. | The lookup runs too often without caching, or the base enrichment rule floods the alert index (see Section 5.7). |
 | Continuous polling service (OAuth2) | Symantec EDR (8), CrowdStrike Falcon (9) | A long running background service (systemd) authenticates with OAuth2 client credentials and continuously polls a vendor cloud API, tracking a watermark or seen-ID state so restarts do not reprocess old data. | Rate limiting handled poorly causes repeated backoff loops; a malformed record crashes the whole service if defensive coding is missing. |
 | Native syslog ingestion | Sophos Firewall (10) | The external device pushes logs directly to Wazuh's built in remote syslog listener. No script or scheduled job is involved. | UDP packet loss under load; a missing or misconfigured allowed-ips restriction accepting logs from unintended sources. |
 
-## 11.2 Severity scoring philosophy
+## 10.2 Severity scoring philosophy
 
 The eight integrations also differ meaningfully in how much they trust an external vendor's own severity judgment versus computing their own. This is worth knowing before comparing alert volumes between integrations, since a level 14 alert does not mean the same thing across all eight.
 
-- Vendor score trusted almost directly: CrowdStrike Falcon (Section 9) maps CrowdStrike's own 0-100 severity score nearly one to one onto Wazuh alert levels, with little additional Wazuh side qualification.
-- Vendor score as one input among several: Sophos Firewall (Section 10) only uses the vendor's own severity field for one specific rule (100830); every other rule derives its severity from Wazuh side logic such as rule type, port, frequency, or content category.
-- Fully Wazuh/script computed: Have I Been Squatted (Section 3), Shodan.io (Section 5) and urlscan.io (Section 6) all compute their own risk or severity labels in the Python script itself, from raw signals the external service provides, rather than relying on a single vendor supplied severity field.
-- Exact match, no scoring needed: Filescan.io (Section 4) and InsecureWeb (Section 7) do not score anything at all, a match against a known-bad indicator is treated as already confirmed, so severity differences between their rules reflect only the type of indicator matched (a hash match is rated higher than an email match, for example) rather than any computed confidence level.
-- Rich in-house correlation on top of vendor data: Symantec EDR (Section 8) is the only integration that builds substantial additional behavioral correlation logic directly into Wazuh's rule engine on top of the vendor's own data, including MITRE ATT&CK tactic co-occurrence, process lineage relationships, and time-of-day gating.
+- Vendor score trusted almost directly: CrowdStrike Falcon (Section 8) maps CrowdStrike's own 0-100 severity score nearly one to one onto Wazuh alert levels, with little additional Wazuh side qualification.
+- Vendor score as one input among several: Sophos Firewall (Section 9) only uses the vendor's own severity field for one specific rule (100830); every other rule derives its severity from Wazuh side logic such as rule type, port, frequency, or content category.
+- Fully Wazuh/script computed: Have I Been Squatted (Section 2), Shodan.io (Section 4) and urlscan.io (Section 5) all compute their own risk or severity labels in the Python script itself, from raw signals the external service provides, rather than relying on a single vendor supplied severity field.
+- Exact match, no scoring needed: Filescan.io (Section 3) and InsecureWeb (Section 6) do not score anything at all, a match against a known-bad indicator is treated as already confirmed, so severity differences between their rules reflect only the type of indicator matched (a hash match is rated higher than an email match, for example) rather than any computed confidence level.
+- Rich in-house correlation on top of vendor data: Symantec EDR (Section 7) is the only integration that builds substantial additional behavioral correlation logic directly into Wazuh's rule engine on top of the vendor's own data, including MITRE ATT&CK tactic co-occurrence, process lineage relationships, and time-of-day gating.
 
-## 11.3 Recurring techniques worth knowing
+## 10.3 Recurring techniques worth knowing
 
-- **Numeric range via regex:** Wazuh's field matching is regex based, not arithmetic, so severity bands such as "score between 50 and 99" are expressed as character class patterns like ^[5-9][0-9]$|^100$. This appears in Symantec (Section 8), CrowdStrike (Section 9) and Shodan (Section 5).
+- **Numeric range via regex:** Wazuh's field matching is regex based, not arithmetic, so severity bands such as "score between 50 and 99" are expressed as character class patterns like ^[5-9][0-9]$|^100$. This appears in Symantec (Section 7), CrowdStrike (Section 8) and Shodan (Section 4).
 - **Generic bucket then specific escalation:** A broad rule catches any occurrence of a category (any MITRE technique, any typosquatting candidate, any denied connection), and a narrower child rule chains off it (if_sid) to escalate specific, more concrete cases. This pattern repeats in every single one of the eight integrations.
-- **Frequency and same-field correlation:** Turning several weak, individually low severity signals into one high confidence alert by requiring a minimum count of matches on the same field within a time window. Used in HIBS (Section 3), Sophos (Section 10, for denial bursts), and referenced conceptually in the Symantec correlation rules (Section 8).
-- **Local caching or pre-fetching to avoid redundant external calls:** urlscan.io (Section 6) uses a 24 hour cache because it is triggered per alert; Filescan.io, InsecureWeb and Shodan avoid this problem structurally by only calling their external API on a fixed schedule rather than per event.
+- **Frequency and same-field correlation:** Turning several weak, individually low severity signals into one high confidence alert by requiring a minimum count of matches on the same field within a time window. Used in HIBS (Section 2), Sophos (Section 9, for denial bursts), and referenced conceptually in the Symantec correlation rules (Section 7).
+- **Local caching or pre-fetching to avoid redundant external calls:** urlscan.io (Section 5) uses a 24 hour cache because it is triggered per alert; Filescan.io, InsecureWeb and Shodan avoid this problem structurally by only calling their external API on a fixed schedule rather than per event.
 
-## 11.4 Summary of applicability to our environment
+## 10.4 Summary of applicability to our environment
 
 | Integration | Applicability status |
 | --- | --- |
-| Have I Been Squatted (Section 3) | Applicable now, requires only a HIBS account |
-| Filescan.io (Section 4) | Applicable now, requires only a Filescan.io account |
-| Shodan.io (Section 5) | Applicable now, requires only a Shodan account |
-| urlscan.io (Section 6) | Applicable now, requires only a urlscan.io account |
-| InsecureWeb (Section 7) | Applicable now, requires only an InsecureWeb account |
-| Symantec EDR (Section 8) | Not applicable to us at this time, depends on a Symantec Endpoint Security license we have not confirmed we hold |
-| CrowdStrike Falcon (Section 9) | Not applicable to us at this time, depends on a CrowdStrike Falcon subscription we have not confirmed we hold |
-| Sophos Firewall (Section 10) | Not applicable to us at this time unless our firewall is confirmed to be a Sophos device |
+| Have I Been Squatted (Section 2) | Applicable now, requires only a HIBS account |
+| Filescan.io (Section 3) | Applicable now, requires only a Filescan.io account |
+| Shodan.io (Section 4) | Applicable now, requires only a Shodan account |
+| urlscan.io (Section 5) | Applicable now, requires only a urlscan.io account |
+| InsecureWeb (Section 6) | Applicable now, requires only an InsecureWeb account |
+| Symantec EDR (Section 7) | Not applicable to us at this time, depends on a Symantec Endpoint Security license we have not confirmed we hold |
+| CrowdStrike Falcon (Section 8) | Not applicable to us at this time, depends on a CrowdStrike Falcon subscription we have not confirmed we hold |
+| Sophos Firewall (Section 9) | Not applicable to us at this time unless our firewall is confirmed to be a Sophos device |
 
 ---
 
-# 12. Appendix: Consolidated Rule ID Map
+# 11. Appendix: Consolidated Rule ID Map
 
 This appendix lists every custom rule ID used across all eight integrations in this document, for quick lookup when an alert appears in the Wazuh Dashboard and the source integration is not immediately obvious from the description alone. Rule IDs are listed by block; within each block, refer back to the referenced section for the full rule definition and its meaning.
 
-## 12.1 Full block allocation
+## 11.1 Full block allocation
 
 | Rule ID range | Integration | Section | Notes |
 | --- | --- | --- | --- |
-| 100100 - 100148 | Have I Been Squatted | 3 | 31 rules; base, candidate, technique, phishing score and correlation tiers |
-| 100200 - 100244 | Filescan.io | 4 | CDB list match rules across five indicator types |
-| 100300 - 100318 | Shodan.io | 5 | Exposure change detection and integration health checks |
-| 100400 - 100405 | urlscan.io | 6 | Event-driven URL reputation enrichment |
-| 100501 - 100507 | InsecureWeb | 7 | CDB list match rules across five indicator types, plus one added general-coverage rule |
-| 100600 - 100683 | Symantec EDR | 8 | Suspicion score, MITRE ATT&CK, process relationships, Application Control, Malware Protection, correlation. Duplicate ID collision from the source article resolved during renumbering, see Section 8.6 |
-| 100696 - 100708 | CrowdStrike Falcon | 9 | Detections and incidents severity ladders. Incidents severity levels corrected during renumbering, see Section 9.6 |
-| 100800 - 100873 | Sophos Firewall | 10 | Baseline, operational, security relevant, critical, frequency and content based tiers |
+| 100100 - 100148 | Have I Been Squatted | 2 | 31 rules; base, candidate, technique, phishing score and correlation tiers |
+| 100200 - 100244 | Filescan.io | 3 | CDB list match rules across five indicator types |
+| 100300 - 100318 | Shodan.io | 4 | Exposure change detection and integration health checks |
+| 100400 - 100405 | urlscan.io | 5 | Event-driven URL reputation enrichment |
+| 100501 - 100507 | InsecureWeb | 6 | CDB list match rules across five indicator types, plus one added general-coverage rule |
+| 100600 - 100683 | Symantec EDR | 7 | Suspicion score, MITRE ATT&CK, process relationships, Application Control, Malware Protection, correlation. Duplicate ID collision from the source article resolved during renumbering, see Section 7.6 |
+| 100696 - 100708 | CrowdStrike Falcon | 8 | Detections and incidents severity ladders. Incidents severity levels corrected during renumbering, see Section 8.6 |
+| 100800 - 100873 | Sophos Firewall | 9 | Baseline, operational, security relevant, critical, frequency and content based tiers |
 
-## 12.2 Next available ID
+## 11.2 Next available ID
 
 > **Recommendation:** The next unused ID block above the ranges in this document is 100900 and above. If any additional custom rules are written after these integrations are deployed, whether extending one of these eight or adding a new integration entirely, continue numbering from 100900 onward and update this table so the numbering scheme in Section 1.4 remains collision free going forward.
 
-## 12.3 Master checklist before enabling any integration
+## 11.3 Master checklist before enabling any integration
 
 - Confirm the relevant account, API key or license is obtained (see the Getting access subsection of the relevant integration).
 - Confirm all angle bracket placeholders in every file being deployed have been replaced with real values.
